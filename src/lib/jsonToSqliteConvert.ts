@@ -143,6 +143,7 @@ async function _clearOldData(db: Database): Promise<void> {
     };
 
     for (const table in tablesAndPks) {
+         console.log(" clearing old data for table ", table);
         const pkCol = tablesAndPks[table as keyof typeof tablesAndPks];
         try {
             // GLOB '*[^0-9]*' finds strings that contain any non-digit character.
@@ -154,31 +155,26 @@ async function _clearOldData(db: Database): Promise<void> {
         }
     }
 }
-
 /**
  * Finds the next available integer order number for a given table.
  */
 async function _getNextAvailableOrder(db: Database, table: string, orderColName: string = 'order'): Promise<number> {
-    let orderNum = 0;
-    while (true) {
-        let stmt: Statement | null = null;
-        try {
-            stmt = db.prepare(`SELECT * FROM ${table} WHERE \`${orderColName}\` = ?`);
-            const result = stmt.getAsObject([orderNum]);
-            if (Object.keys(result).length === 0) { // Check if no row was found
-                break;
-            }
-            orderNum += 1;
-        } catch (error) {
-            console.error(`Error checking order number for table ${table}:`, error);
-            throw error;
-        } finally {
-            if (stmt) {
-                stmt.free(); // Always free the statement
-            }
-        }
-    }
-    return orderNum;
+  let orderNum = 0;
+  while (true) {
+      try {
+          const query = `SELECT * FROM ${table} WHERE \`${orderColName}\` = ${orderNum};`;
+
+          const results = db.exec(query);
+          if (results.length === 0 || results[0].values.length === 0) {
+              break; // No row found for this orderNum, it's available
+          }
+          orderNum += 1; // Row found, try the next orderNum
+      } catch (error) {
+          console.error(`Error checking order number for table ${table} with db.exec():`, error);
+          throw error;
+      }
+  }
+  return orderNum;
 }
 
 /**
@@ -221,6 +217,7 @@ async function _processWallets(db: Database, data: any): Promise<{ walletPkMap: 
         return (a.name || "").toLowerCase().localeCompare((b.name || "").toLowerCase());
     });
 
+    console.log("identified wallets ", walletsSorted);
     let currentOrderNum = await _getNextAvailableOrder(db, "wallets");
 
     for (const w of walletsSorted) {
@@ -234,7 +231,7 @@ async function _processWallets(db: Database, data: any): Promise<{ walletPkMap: 
             stmt = db.prepare("SELECT wallet_pk FROM wallets WHERE name = ?");
             const existingWallet = stmt.getAsObject([w.name]);
 
-            if (Object.keys(existingWallet).length > 0) {
+            if (Object.keys(existingWallet).length > 0 && !!existingWallet['wallet_pk']) {
                 walletPkMap[w.id] = existingWallet.wallet_pk as string;
                 await db.exec("UPDATE wallets SET currency = ? WHERE name = ?", [w.currency?.toLowerCase() ?? "", w.name]);
             } else {
@@ -746,6 +743,7 @@ export const jsonToSqliteConvert = async (databaseJson: any, _databaseInfoJson: 
 
     try {
         await _clearOldData(db);
+        console.log(" cleared old data ");
         // Note: sql.js transactions:
         // You can wrap multiple exec calls in a single transaction for performance and atomicity.
         // db.exec('BEGIN TRANSACTION;');
@@ -753,12 +751,15 @@ export const jsonToSqliteConvert = async (databaseJson: any, _databaseInfoJson: 
         // db.exec('COMMIT;');
         // For simplicity and matching Python's per-step commit, we'll keep individual commits.
 
+        db.exec('BEGIN TRANSACTION;');
         const { walletPkMap, walletIdToName } = await _processWallets(db, data);
-        db.exec('COMMIT;'); // Equivalent to Python's conn.commit()
+        db.exec('COMMIT;');
 
+        db.exec('BEGIN TRANSACTION;');
         const { categoryPkMap, defaultCategoryPk } = await _processCategories(db, data);
-        db.exec('COMMIT;'); // Equivalent to Python's conn.commit()
+        db.exec('COMMIT;');
 
+        db.exec('BEGIN TRANSACTION;');
         const {
             txnPkMap,
             recurringRuleIdToObj, // Not used here, but returned by function
@@ -769,12 +770,15 @@ export const jsonToSqliteConvert = async (databaseJson: any, _databaseInfoJson: 
         } = await _processTransactions(db, data, walletPkMap, categoryPkMap, defaultCategoryPk, walletIdToName);
         db.exec('COMMIT;');
 
+        db.exec('BEGIN TRANSACTION;');
         await _updateRecurringTransactionPks(db, recurringRuleIdToLatestTxnPk);
         db.exec('COMMIT;');
 
+        db.exec('BEGIN TRANSACTION;');
         await _processPlannedPayments(db, data, walletPkMap, categoryPkMap, defaultCategoryPk, recurringRuleIdToTxnPk, recurringRuleIdToCount, recurringRuleIdToLatestDate);
         db.exec('COMMIT;');
 
+        db.exec('BEGIN TRANSACTION;');
         await _processAssociatedTitles(db, data, categoryPkMap, defaultCategoryPk);
         db.exec('COMMIT;');
 
@@ -785,61 +789,3 @@ export const jsonToSqliteConvert = async (databaseJson: any, _databaseInfoJson: 
         throw error; // Re-throw to allow external handling
     }
 };
-
-// Example usage (assuming you have a way to load data and initialize sql.js)
-/*
-// To use this, you'd typically have a setup like:
-async function runImport() {
-    // 1. Load your sql.js library
-    const SQL = await initSqlJs({
-        locateFile: (file: string) => `https://sql.js.org/dist/${file}`
-    });
-
-    // 2. Create/Load your database (e.g., from an ArrayBuffer of an existing .sqlite file)
-    // For a new database:
-    const db = new SQL.Database();
-    // For loading an existing database:
-    // const fileBuffer = await fetch('/path/to/your/new.sqlite').then(res => res.arrayBuffer());
-    // const db = new SQL.Database(new Uint8Array(fileBuffer));
-
-    // 3. (Optional) Create tables if they don't exist. This script assumes they do.
-    // Example DDL (simplified):
-    // db.exec(`
-    //     CREATE TABLE IF NOT EXISTS wallets (wallet_pk TEXT PRIMARY KEY, name TEXT, colour TEXT, icon_name TEXT, date_created INTEGER, "order" INTEGER, currency TEXT, decimals INTEGER);
-    //     CREATE TABLE IF NOT EXISTS categories (category_pk TEXT PRIMARY KEY, name TEXT, colour TEXT, icon_name TEXT, emoji_icon_name TEXT, date_created INTEGER, "order" INTEGER, income INTEGER, method_added TEXT, main_category_pk TEXT);
-    //     CREATE TABLE IF NOT EXISTS transactions (transaction_pk TEXT PRIMARY KEY, name TEXT, amount REAL, note TEXT, category_fk TEXT, wallet_fk TEXT, date_created INTEGER, income INTEGER, paid INTEGER, created_another_future_transaction INTEGER, type INTEGER, date_time_modified INTEGER, period_length INTEGER, reoccurrence INTEGER, original_date_due INTEGER, paired_transaction_fk TEXT);
-    //     CREATE TABLE IF NOT EXISTS associated_titles (associated_title_pk TEXT PRIMARY KEY, title TEXT, category_fk TEXT, date_created INTEGER, "order" INTEGER);
-    // `);
-
-
-    // 4. Load your JSON data
-    // In a Node.js environment:
-    // import * as fs from 'fs';
-    // const jsonString = fs.readFileSync('/Users/sahilso/Downloads/data3316392286964498941.json', 'utf-16le'); // Adjust encoding
-    // const databaseJson = { fullJson: JSON.parse(jsonString) };
-
-    // In a browser environment (e.g., via fetch):
-    // const response = await fetch('/data3316392286964498941.json');
-    // const databaseJson = { fullJson: await response.json() };
-
-
-    // 5. Call the import function
-    try {
-        // You mentioned databaseInfoJson, but it wasn't used in Python or our discussion.
-        // Keeping it for consistency with your function signature.
-        await jsonToSqliteConvert(databaseJson, {}, db);
-        console.log("Database import process finished.");
-        // Save the database if in browser/Node.js with fs
-        // const data = db.export();
-        // const buffer = Buffer.from(data);
-        // fs.writeFileSync('/Users/sahilso/Downloads/new.sqlite', buffer);
-    } catch (e) {
-        console.error("Database import failed:", e);
-    } finally {
-        db.close(); // Close the database connection
-    }
-}
-
-// Call runImport() when your application starts or when appropriate
-// runImport();
-*/
