@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, Database, Play, Table, FileText, RotateCcw, Download, ArrowRight } from "lucide-react";
+import { Upload, Database, Play, Table, FileText, RotateCcw, Download, ArrowRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,10 +55,13 @@ const Index = () => {
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [recentQueries, setRecentQueries] = useState<RecentQuery[]>([]);
+  const [sqliteFileName, setSqliteFileName] = useState<string>("");
+  const [jsonFileName, setJsonFileName] = useState<string>("");
 
   const handleDatabaseLoad = (db: any, info: DatabaseInfo) => {
     setDatabase(db);
     setDatabaseInfo(info);
+    setSqliteFileName(info.name);
     setSelectedTable("");
     setQueryResult(null);
     setRecentQueries([]);
@@ -67,6 +70,7 @@ const Index = () => {
   const handleJsonLoad = (db: any, info: DatabaseInfo) => {
     setDatabaseJson(db);
     setDatabaseInfoJson(info);
+    setJsonFileName(info.name);
   };
 
   const handleProcessDatabaseJson = async () => {
@@ -135,6 +139,8 @@ const Index = () => {
     setSelectedTable("");
     setQueryResult(null);
     setRecentQueries([]);
+    setSqliteFileName("");
+    setJsonFileName("");
   };
 
   const handleDownloadDatabase = () => {
@@ -181,48 +187,76 @@ const Index = () => {
               JSON to SQLite Converter
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Convert your JSON data to SQLite format. Upload both a base SQLite file and your JSON data to begin the conversion process.
+              Convert your Ivy Wallet JSON data to SQLite format using your Cashew Wallet database as the base structure.
             </p>
           </div>
 
           <div className="max-w-4xl mx-auto">
             <div className="grid md:grid-cols-2 gap-6">
-              <Card>
+              <Card className="border-green-200 shadow-green-50">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-green-800">
                     <Database className="h-5 w-5" />
                     Step 1: Base SQLite File
                   </CardTitle>
                   <CardDescription>
-                    Upload an existing SQLite database file that will serve as the base structure
+                    Upload your Cashew Wallet SQLite database file that will serve as the base structure.
+                    <br />
+                    <span className="text-xs text-green-700 mt-2 inline-block">
+                      This file is typically exported from the Cashew Wallet app.
+                    </span>
                   </CardDescription>
+                  <div className="mt-2">
+                    <a 
+                      href="https://cashewwallet.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-800 text-sm inline-flex items-center gap-1 transition-colors"
+                    >
+                      Visit Cashew Wallet <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <FileUpload onDatabaseLoad={handleDatabaseLoad} />
                   {database && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-700">✓ SQLite file loaded successfully</p>
+                      <p className="text-sm text-green-700">✓ SQLite file '{sqliteFileName}' loaded successfully</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-purple-200 shadow-purple-50">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-purple-800">
                     <FileText className="h-5 w-5" />
                     Step 2: JSON Data
                   </CardTitle>
                   <CardDescription>
-                    Upload your JSON file containing the data to be converted
+                    Upload your Ivy Wallet JSON file containing the data to be converted.
+                    <br />
+                    <span className="text-xs text-purple-700 mt-2 inline-block">
+                      This file is typically exported from the Ivy Wallet app.
+                    </span>
                   </CardDescription>
+                  <div className="mt-2">
+                    <a 
+                      href="https://ivywallet.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-purple-600 hover:text-purple-800 text-sm inline-flex items-center gap-1 transition-colors"
+                    >
+                      Visit Ivy Wallet <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <FileUploadJson onJsonLoad={handleJsonLoad} databaseJson={databaseJson} />
                   {databaseJson && (
-                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-700">✓ JSON file loaded successfully</p>
-                      <div className="text-xs text-green-600 mt-1">
+                    <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                      <p className="text-sm text-purple-700">✓ JSON file '{jsonFileName}' loaded successfully</p>
+                      <div className="text-xs text-purple-600 mt-1">
                         {databaseInfoJson?.accounts} accounts, {databaseInfoJson?.transactions} transactions, {databaseInfoJson?.categories} categories
                       </div>
                     </div>
@@ -247,7 +281,7 @@ const Index = () => {
               JSON to SQLite Converter
             </h1>
             <p className="text-muted-foreground mt-2">
-              {isConverted ? "Conversion complete! Explore your converted database below." : "Ready to convert your JSON data to SQLite format."}
+              {isConverted ? "Conversion complete! Explore your converted database below." : "Ready to convert your Ivy Wallet JSON data to SQLite format."}
             </p>
           </div>
           <Button variant="outline" onClick={handleStartOver}>
@@ -264,19 +298,19 @@ const Index = () => {
                 Convert JSON to SQLite
               </CardTitle>
               <CardDescription>
-                Process your JSON data and merge it into the SQLite database
+                Process your Ivy Wallet JSON data and merge it into the Cashew Wallet SQLite database
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="font-medium">Base Database</p>
-                    <p className="text-muted-foreground">{databaseInfo?.name}</p>
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="font-medium text-green-800">Cashew Wallet Database</p>
+                    <p className="text-green-600 text-xs">{sqliteFileName}</p>
                   </div>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="font-medium">JSON Data</p>
-                    <p className="text-muted-foreground">{databaseInfoJson?.name}</p>
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p className="font-medium text-purple-800">Ivy Wallet Data</p>
+                    <p className="text-purple-600 text-xs">{jsonFileName}</p>
                   </div>
                 </div>
                 <Button 
@@ -285,7 +319,7 @@ const Index = () => {
                   className="w-full"
                   size="lg"
                 >
-                  {isLoading ? "Converting..." : "Convert JSON to SQLite"}
+                  {isLoading ? "Converting..." : "Convert Ivy Wallet JSON to SQLite"}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
