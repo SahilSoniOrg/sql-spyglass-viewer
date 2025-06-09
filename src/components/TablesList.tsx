@@ -1,5 +1,5 @@
 
-import { Table, Columns, Key } from "lucide-react";
+import { Table, Columns, Key, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -20,16 +20,30 @@ interface TablesListProps {
   tables: Table[];
   selectedTable: string;
   onTableSelect: (tableName: string) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
-const TablesList = ({ tables, selectedTable, onTableSelect }: TablesListProps) => {
+const TablesList = ({ tables, selectedTable, onTableSelect, onRefresh, isRefreshing }: TablesListProps) => {
   return (
     <Card className="h-fit">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Table className="h-5 w-5" />
-          Tables ({tables.length})
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Table className="h-5 w-5" />
+            Tables ({tables.length})
+          </CardTitle>
+          {onRefresh && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea className="h-[500px]">
