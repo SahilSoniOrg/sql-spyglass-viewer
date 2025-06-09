@@ -736,11 +736,6 @@ export const jsonToSqliteConvert = async (databaseJson: any, _databaseInfoJson: 
     // Assuming databaseJson.fullJson holds the main data structure as used by Python script
     const data = databaseJson;
 
-    if (!data) {
-        console.error("Invalid databaseJson format. Expected databaseJson.fullJson to exist.");
-        throw new Error("Invalid databaseJson format.");
-    }
-
     try {
         await _clearOldData(db);
         console.log(" cleared old data ");

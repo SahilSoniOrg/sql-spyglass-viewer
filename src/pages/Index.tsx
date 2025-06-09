@@ -103,13 +103,13 @@ const Index = () => {
       
       toast({
         title: "Conversion Complete",
-        description: "JSON data has been successfully converted to SQLite format",
+        description: "IvyWallet JSON data has been successfully converted to Cashew SQLite format",
       });
     } catch (error) {
       console.error("Conversion failed:", error);
       toast({
         title: "Conversion Failed",
-        description: "Failed to convert JSON to SQLite format",
+        description: "Failed to convert IvyWallet JSON to Cashew SQLite",
         variant: "destructive",
       });
     } finally {
@@ -278,7 +278,7 @@ const Index = () => {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Database className="text-primary" />
-              JSON to SQLite Converter
+              IvyWallet JSON to Cashew SQLite Converter
             </h1>
             <p className="text-muted-foreground mt-2">
               {isConverted ? "Conversion complete! Explore your converted database below." : "Ready to convert your Ivy Wallet JSON data to SQLite format."}
@@ -295,7 +295,7 @@ const Index = () => {
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-2">
                 <ArrowRight className="h-5 w-5" />
-                Convert JSON to SQLite
+                Convert IvyWallet JSON to Cashew SQLite
               </CardTitle>
               <CardDescription>
                 Process your Ivy Wallet JSON data and merge it into the Cashew Wallet SQLite database
@@ -319,7 +319,7 @@ const Index = () => {
                   className="w-full"
                   size="lg"
                 >
-                  {isLoading ? "Converting..." : "Convert Ivy Wallet JSON to SQLite"}
+                  {isLoading ? "Converting..." : "Convert Ivy Wallet JSON to Cashew SQLite"}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -329,6 +329,16 @@ const Index = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Converted Database</h2>
+              {/* Hidden migration counter - will increment when a migration is successful */}
+              <img 
+                src="https://visitor-badge.laobi.icu/badge?page_id=sql-spyglass-viewer.migrations&left_color=%23000000&right_color=%2300aa00&left_text=Migrations" 
+                alt="Migration counter" 
+                className="hidden"
+                onError={(e) => {
+                  // Silently handle any errors with the badge
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
               <Button onClick={handleDownloadDatabase}>
                 <Download className="h-4 w-4 mr-2" />
                 Download SQLite File
