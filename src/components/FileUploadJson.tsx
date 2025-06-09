@@ -7,30 +7,34 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 
 interface FileUploadProps {
-  onDatabaseLoad: (database: any, databaseInfo: any) => void;
+    onJsonLoad: (database: any, databaseInfo: any) => void;
+    databaseJson: any;
 }
+const tryDecode = (buffer: ArrayBuffer): string => {
+    try {
+        console.log("Trying UTF-8");
+      return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+    } catch {
+      try {
+        console.log("Trying UTF-16");
+        return new TextDecoder("utf-16", { fatal: true }).decode(buffer);
+      } catch {
+        throw new Error("Unsupported file encoding. Expected UTF-8 or UTF-16.");
+      }
+    }
+  };
 
-const FileUpload = ({ onDatabaseLoad }: FileUploadProps) => {
+const FileUploadJson = ({ onJsonLoad, databaseJson }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [fileName, setFileName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadSqlJs = async () => {
-    // @ts-ignore
-    const initSqlJs = (await import('sql.js')).default;
-    return await initSqlJs({
-      locateFile: (file: string) => `https://sql.js.org/dist/${file}`
-    });
-  };
-
   const processFile = async (file: File) => {
-    if (!file.name.toLowerCase().includes('.db') && 
-        !file.name.toLowerCase().includes('.sqlite') && 
-        !file.name.toLowerCase().includes('.sql') && 
-        !file.name.toLowerCase().includes('.sqlite3')) {
-      setError("Please select a valid SQLite database file (.db, .sqlite, .sql, or .sqlite3)");
+    if (!file.name.toLowerCase().includes('.json')) {
+      setError("Please select a valid JSON file");
       return;
     }
 
@@ -39,43 +43,38 @@ const FileUpload = ({ onDatabaseLoad }: FileUploadProps) => {
     setProgress(10);
 
     try {
-      const SQL = await loadSqlJs();
       setProgress(30);
 
-      const arrayBuffer = await file.arrayBuffer();
+      const text = await file.text();
       setProgress(50);
-
-      const db = new SQL.Database(new Uint8Array(arrayBuffer));
-      setProgress(70);
-
-      // Get database schema information
-      const tables = db.exec("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+      setFileName(file.name);
+      const db = JSON.parse(text);
+      setProgress(80);
+    //verify that the json have these fields, if not, throw an error
+    // 1. accounts
+    // 2. transactions
+    // 3. categories
+    // 4. plannedPayments
+    if (!db.accounts || !db.transactions || !db.categories || !db.plannedPaymentRules) {
+        console.log(db);
+        console.log(db.plannedPaymentRules);
+        console.log(db.categories);
+        console.log(db.transactions);
+        console.log(db.accounts);
+      throw new Error("Invalid JSON file. Please ensure it's a valid IvyWallet JSON file.");
+    }
       
-      const databaseInfo = {
+      const jsonInfo = {
         name: file.name,
-        tables: tables[0] ? tables[0].values.map((row: any) => {
-          const tableName = row[0];
-          const tableSql = row[1];
-          
-          // Get column information
-          const columns = db.exec(`PRAGMA table_info(${tableName})`);
-          const columnInfo = columns[0] ? columns[0].values.map((col: any) => ({
-            name: col[1],
-            type: col[2],
-            notnull: col[3] === 1,
-            pk: col[5] === 1
-          })) : [];
-
-          return {
-            name: tableName,
-            sql: tableSql,
-            columns: columnInfo
-          };
-        }) : []
+        accounts: db.accounts.length,
+        transactions: db.transactions.length,
+        categories: db.categories.length,
+        plannedPayments: db.plannedPaymentRules.length,
+        fullJson: db,
       };
 
       setProgress(100);
-      onDatabaseLoad(db, databaseInfo);
+      onJsonLoad(db, jsonInfo);
     } catch (err) {
       console.error("Error loading database:", err);
       setError("Failed to load database file. Please ensure it's a valid SQLite database.");
@@ -125,10 +124,10 @@ const FileUpload = ({ onDatabaseLoad }: FileUploadProps) => {
       <CardHeader className="text-center">
         <CardTitle className="flex items-center justify-center gap-2">
           <Database className="h-6 w-6" />
-          Upload SQLite Database
+          {fileName ? "File selected: " + fileName : "Upload JSON File"}
         </CardTitle>
         <CardDescription>
-          Drag and drop your SQLite file here, or click to browse
+          {fileName ? "Click to select another file" : "Drag and drop your JSON file here, or click to browse"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -148,10 +147,10 @@ const FileUpload = ({ onDatabaseLoad }: FileUploadProps) => {
         >
           <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-lg font-medium mb-2">
-            {isLoading ? "Loading database..." : "Drop your SQLite file here"}
+            {isLoading ? "Loading IvyWallet JSON..." : "Drop your IvyWallet JSON file here"}
           </p>
           <p className="text-sm text-muted-foreground mb-4">
-            Supports .db, .sqlite, and .sqlite3 files
+            Supports .json files
           </p>
           
           {isLoading && (
@@ -178,7 +177,7 @@ const FileUpload = ({ onDatabaseLoad }: FileUploadProps) => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".db,.sqlite,.sqlite3"
+          accept=".json"
           onChange={handleFileInputChange}
           className="hidden"
         />
@@ -187,4 +186,4 @@ const FileUpload = ({ onDatabaseLoad }: FileUploadProps) => {
   );
 };
 
-export default FileUpload;
+export default FileUploadJson;

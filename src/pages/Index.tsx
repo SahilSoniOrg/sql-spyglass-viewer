@@ -13,6 +13,8 @@ import QueryEditor from "@/components/QueryEditor";
 import QueryResults from "@/components/QueryResults";
 import TableViewer from "@/components/TableViewer";
 import RecentQueries from "@/components/RecentQueries";
+import FileUploadJson from "@/components/FileUploadJson";
+import { jsonToSqliteConvert } from "@/lib/jsonToSqliteConvert";
 
 interface DatabaseInfo {
   name: string;
@@ -43,7 +45,10 @@ interface RecentQuery {
 
 const Index = () => {
   const [database, setDatabase] = useState<any>(null);
+  const [databaseJson, setDatabaseJson] = useState<any>(null);
   const [databaseInfo, setDatabaseInfo] = useState<DatabaseInfo | null>(null);
+  const [databaseInfoJson, setDatabaseInfoJson] = useState<DatabaseInfo | null>(null);
+  const [updatedDatabse, setUpdatedDatabase] = useState<boolean>(false);
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,6 +61,16 @@ const Index = () => {
     setQueryResult(null);
     setRecentQueries([]);
   };
+
+  const handleJsonLoad = (db: any, info: DatabaseInfo) => {
+    setDatabaseJson(db);
+    setDatabaseInfoJson(info);
+  };
+  const handleProcessDatabaseJson = async () => {
+    await jsonToSqliteConvert(databaseJson, databaseInfoJson, database);
+    setUpdatedDatabase(true);
+  };
+
 
   const handleQueryExecute = (result: QueryResult, query: string) => {
     setQueryResult(result);
@@ -123,7 +138,7 @@ const Index = () => {
   };
 
   const handleDownloadDatabase = () => {
-    if (!database) return;
+    if (!updatedDatabse) return;
     
     try {
       const data = database.export();
@@ -170,96 +185,21 @@ const Index = () => {
           </p>
         </div>
 
-        {!database ? (
+        {!database || !databaseJson ? (
           <div className="max-w-2xl mx-auto">
             <FileUpload onDatabaseLoad={handleDatabaseLoad} />
+            <FileUploadJson onJsonLoad={handleJsonLoad} databaseJson={databaseJson} />
           </div>
-        ) : (
-          <div className="space-y-6">
-            <Card className="border-primary/20">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Database: {databaseInfo?.name}
-                    </CardTitle>
-                    <CardDescription>
-                      {databaseInfo?.tables.length} table{databaseInfo?.tables.length !== 1 ? 's' : ''} found
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={handleDownloadDatabase}
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download DB
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={handleLoadAnotherFile}
-                      className="flex items-center gap-2"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      Load Another File
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-
-            <div className="grid lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-1 space-y-4">
-                <TablesList 
-                  tables={databaseInfo?.tables || []} 
-                  selectedTable={selectedTable}
-                  onTableSelect={setSelectedTable}
-                  onRefresh={handleRefreshTables}
-                  isRefreshing={isLoading}
-                />
-                <RecentQueries 
-                  queries={recentQueries}
-                  onQuerySelect={handleQuerySelect}
-                />
-              </div>
-
-              <div className="lg:col-span-3">
-                <Tabs defaultValue="query" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="query" className="flex items-center gap-2">
-                      <Play className="h-4 w-4" />
-                      Query Editor
-                    </TabsTrigger>
-                    <TabsTrigger value="table" className="flex items-center gap-2">
-                      <Table className="h-4 w-4" />
-                      Table Viewer
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="query" className="space-y-4">
-                    <QueryEditor 
-                      database={database} 
-                      onQueryExecute={handleQueryExecute}
-                    />
-                    {queryResult && (
-                      <QueryResults result={queryResult} />
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="table">
-                    <TableViewer 
-                      database={database}
-                      selectedTable={selectedTable}
-                      tables={databaseInfo?.tables || []}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </div>
+        ) : 
+        // a button to process and generate new file from the databaseJson
+        <div className="max-w-2xl mx-auto flex flex-col gap-4">
+          <Button onClick={handleProcessDatabaseJson}>Process Convertsion from JSON to SQLite</Button>
+          //once the button is clicked, show a button to download the new file
+          <div className="flex flex-col gap-4">
+            <Button onClick={handleDownloadDatabase}>Download New SQLite File</Button>
           </div>
-        )}
+        </div>
+        }
       </div>
     </div>
   );
