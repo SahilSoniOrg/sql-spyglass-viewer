@@ -1,73 +1,86 @@
-# Welcome to your Lovable project
+# Ivy Wallet to Cashew Migrator
 
-## Project info
+A web-based tool designed specifically for migrating financial data from Ivy Wallet to Cashew. This application helps you seamlessly transfer your accounts, transactions, and categories between these two personal finance applications.
 
-**URL**: https://lovable.dev/projects/f9c5d8ab-7c94-4598-a998-6789b345ebf5
+🔗 **Live App**: [https://sql-spyglass-viewer.lovable.app/](https://sql-spyglass-viewer.lovable.app/)
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- 🔄 One-click migration from Ivy Wallet to Cashew
+- 🔍 Preview data before migration
+- 🏦 Transfer accounts with balances
+- 💰 Move transaction history
+- 📂 Import Ivy Wallet backup files directly
+- 🎯 Preserve transaction categories and metadata
+- 🎨 Modern, responsive UI with dark/light mode support
 
-**Use Lovable**
+## About the Apps
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f9c5d8ab-7c94-4598-a998-6789b345ebf5) and start prompting.
+- [Cashew App](https://cashewapp.web.app/) - The destination app for your financial data
+- [Ivy Wallet](https://github.com/Ivy-Apps/ivy-wallet) - The source app for your existing financial data
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v16 or later)
+- npm or yarn
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Installation
 
-Follow these steps:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SahilSoniOrg/sql-spyglass-viewer.git
+   cd sql-spyglass-viewer
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+4. Open [http://localhost:5173](http://localhost:5173) in your browser
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## How to Migrate Your Data
 
-**Edit a file directly in GitHub**
+1. **Export from Ivy Wallet**:
+   - Open Ivy Wallet
+   - Go to Settings > Backup & Restore > Export Data
+   - Choose JSON format for export
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+2. **Import to this tool**:
+   - Click "Upload Ivy Wallet Backup"
+   - Select the exported JSON file
+   - Review the data preview to ensure everything looks correct
 
-**Use GitHub Codespaces**
+3. **Prepare for Cashew**:
+   - The tool will automatically map Ivy Wallet data to Cashew's format
+   - You'll see a summary of accounts, transactions, and categories to be migrated
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+4. **Complete the Migration**:
+   - Click "Export for Cashew" to download the migration file
+   - Open Cashew App
+   - Go to Settings > Import Data
+   - Select the downloaded file to complete the migration
 
-## What technologies are used for this project?
+## Technologies Used
 
-This project is built with:
+- ⚛️ React 18 - For building the user interface
+- 📱 TypeScript - For type safety and better development experience
+- 🎨 shadcn/ui - Beautiful, accessible components
+- 🎨 Tailwind CSS - For responsive styling
+- 🔄 JSON Schema - For data validation and transformation
+- 📊 SQL.js - For handling database operations in the browser
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Contributing
 
-## How can I deploy this project?
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-Simply open [Lovable](https://lovable.dev/projects/f9c5d8ab-7c94-4598-a998-6789b345ebf5) and click on Share -> Publish.
+## License
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is open source and available under the [MIT License](LICENSE).
