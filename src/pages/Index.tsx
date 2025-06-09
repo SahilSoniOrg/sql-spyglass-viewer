@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Upload, Database, Play, Table, FileText, RotateCcw, Download, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,9 @@ interface DatabaseInfo {
       pk: boolean;
     }>;
   }>;
+  accounts?: number;
+  transactions?: number;
+  categories?: number;
 }
 
 interface QueryResult {
@@ -312,8 +314,7 @@ const Index = () => {
                   tables={databaseInfo?.tables || []} 
                   onTableSelect={setSelectedTable}
                   selectedTable={selectedTable}
-                  database={database}
-                  onTablesRefresh={() => {}}
+                  onRefresh={() => {}}
                 />
               </TabsContent>
               
@@ -331,8 +332,8 @@ const Index = () => {
                 {selectedTable ? (
                   <TableViewer 
                     database={database} 
-                    tableName={selectedTable}
-                    tableSchema={databaseInfo?.tables.find(t => t.name === selectedTable)} 
+                    selectedTable={selectedTable}
+                    tables={databaseInfo?.tables || []} 
                   />
                 ) : (
                   <Card>
