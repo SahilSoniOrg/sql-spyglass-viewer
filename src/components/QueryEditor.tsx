@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 
 interface QueryEditorProps {
   database: any;
-  onQueryExecute: (result: any) => void;
+  onQueryExecute: (result: any, query: string) => void;
 }
 
 const QueryEditor = ({ database, onQueryExecute }: QueryEditorProps) => {
@@ -36,7 +36,7 @@ const QueryEditor = ({ database, onQueryExecute }: QueryEditorProps) => {
           columns: [],
           values: [],
           error: undefined
-        });
+        }, query);
         toast({
           title: "Query Executed",
           description: "Query executed successfully (no results returned).",
@@ -46,7 +46,7 @@ const QueryEditor = ({ database, onQueryExecute }: QueryEditorProps) => {
           columns: result[0].columns,
           values: result[0].values,
           error: undefined
-        });
+        }, query);
         toast({
           title: "Query Executed",
           description: `Query executed successfully. ${result[0].values.length} rows returned.`,
@@ -60,7 +60,7 @@ const QueryEditor = ({ database, onQueryExecute }: QueryEditorProps) => {
         columns: [],
         values: [],
         error: errorMessage
-      });
+      }, query);
       
       toast({
         title: "Query Error",
