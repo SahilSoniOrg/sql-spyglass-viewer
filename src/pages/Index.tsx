@@ -1,6 +1,6 @@
 
 import { useState, useRef } from "react";
-import { Upload, Database, Play, Table, FileText } from "lucide-react";
+import { Upload, Database, Play, Table, FileText, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,6 +50,13 @@ const Index = () => {
     setQueryResult(result);
   };
 
+  const handleLoadAnotherFile = () => {
+    setDatabase(null);
+    setDatabaseInfo(null);
+    setSelectedTable("");
+    setQueryResult(null);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
@@ -72,13 +79,25 @@ const Index = () => {
           <div className="space-y-6">
             <Card className="border-primary/20">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Database: {databaseInfo?.name}
-                </CardTitle>
-                <CardDescription>
-                  {databaseInfo?.tables.length} table{databaseInfo?.tables.length !== 1 ? 's' : ''} found
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Database: {databaseInfo?.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {databaseInfo?.tables.length} table{databaseInfo?.tables.length !== 1 ? 's' : ''} found
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleLoadAnotherFile}
+                    className="flex items-center gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Load Another File
+                  </Button>
+                </div>
               </CardHeader>
             </Card>
 
