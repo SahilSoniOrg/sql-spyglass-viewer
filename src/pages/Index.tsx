@@ -1,6 +1,6 @@
 
 import { useState, useRef } from "react";
-import { Upload, Database, Play, Table, FileText, RotateCcw, Download } from "lucide-react";
+import { Upload, Database, Play, Table, FileText, RotateCcw, Download, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,7 +48,7 @@ const Index = () => {
   const [databaseJson, setDatabaseJson] = useState<any>(null);
   const [databaseInfo, setDatabaseInfo] = useState<DatabaseInfo | null>(null);
   const [databaseInfoJson, setDatabaseInfoJson] = useState<DatabaseInfo | null>(null);
-  const [updatedDatabse, setUpdatedDatabase] = useState<boolean>(false);
+  const [isConverted, setIsConverted] = useState<boolean>(false);
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,40 +66,14 @@ const Index = () => {
     setDatabaseJson(db);
     setDatabaseInfoJson(info);
   };
+
   const handleProcessDatabaseJson = async () => {
-    await jsonToSqliteConvert(databaseJson, databaseInfoJson, database);
-    setUpdatedDatabase(true);
-  };
-
-
-  const handleQueryExecute = (result: QueryResult, query: string) => {
-    setQueryResult(result);
-    
-    // Add to recent queries
-    const newQuery: RecentQuery = {
-      query: query.trim(),
-      timestamp: new Date(),
-      success: !result.error,
-      rowCount: result.values?.length
-    };
-    
-    setRecentQueries(prev => [newQuery, ...prev.slice(0, 9)]); // Keep last 10 queries
-  };
-
-  const handleLoadAnotherFile = () => {
-    setDatabase(null);
-    setDatabaseInfo(null);
-    setSelectedTable("");
-    setQueryResult(null);
-    setRecentQueries([]);
-  };
-
-  const handleRefreshTables = () => {
-    if (!database) return;
-    
     setIsLoading(true);
     try {
-      // Re-extract table information
+      await jsonToSqliteConvert(databaseJson, databaseInfoJson, database);
+      setIsConverted(true);
+      
+      // Refresh table information after conversion
       const tablesResult = database.exec("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
       
       if (tablesResult.length > 0) {
@@ -107,7 +81,6 @@ const Index = () => {
           const tableName = row[0];
           const sql = row[1];
           
-          // Get column information
           const columnsResult = database.exec(`PRAGMA table_info("${tableName}")`);
           const columns = columnsResult[0]?.values.map((col: any[]) => ({
             name: col[1],
@@ -120,16 +93,17 @@ const Index = () => {
         });
         
         setDatabaseInfo(prev => prev ? { ...prev, tables } : null);
-        toast({
-          title: "Tables Refreshed",
-          description: `Found ${tables.length} tables`,
-        });
       }
-    } catch (error) {
-      console.error("Error refreshing tables:", error);
+      
       toast({
-        title: "Error",
-        description: "Failed to refresh tables",
+        title: "Conversion Complete",
+        description: "JSON data has been successfully converted to SQLite format",
+      });
+    } catch (error) {
+      console.error("Conversion failed:", error);
+      toast({
+        title: "Conversion Failed",
+        description: "Failed to convert JSON to SQLite format",
         variant: "destructive",
       });
     } finally {
@@ -137,8 +111,32 @@ const Index = () => {
     }
   };
 
+  const handleQueryExecute = (result: QueryResult, query: string) => {
+    setQueryResult(result);
+    
+    const newQuery: RecentQuery = {
+      query: query.trim(),
+      timestamp: new Date(),
+      success: !result.error,
+      rowCount: result.values?.length
+    };
+    
+    setRecentQueries(prev => [newQuery, ...prev.slice(0, 9)]);
+  };
+
+  const handleStartOver = () => {
+    setDatabase(null);
+    setDatabaseJson(null);
+    setDatabaseInfo(null);
+    setDatabaseInfoJson(null);
+    setIsConverted(false);
+    setSelectedTable("");
+    setQueryResult(null);
+    setRecentQueries([]);
+  };
+
   const handleDownloadDatabase = () => {
-    if (!updatedDatabse) return;
+    if (!isConverted || !database) return;
     
     try {
       const data = database.export();
@@ -146,7 +144,7 @@ const Index = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = databaseInfo?.name || 'database.sqlite';
+      a.download = `converted_${databaseInfoJson?.name || 'database'}.sqlite`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -154,7 +152,7 @@ const Index = () => {
       
       toast({
         title: "Download Started",
-        description: "Database file is being downloaded",
+        description: "Converted SQLite database is being downloaded",
       });
     } catch (error) {
       console.error("Error downloading database:", error);
@@ -168,38 +166,193 @@ const Index = () => {
 
   const handleQuerySelect = (query: string) => {
     // This will be handled by the QueryEditor component
-    // We can pass this query to it
   };
 
+  // Step 1: Upload files
+  if (!database || !databaseJson) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-8 px-4">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
+              <FileText className="text-primary" />
+              JSON to SQLite Converter
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Convert your JSON data to SQLite format. Upload both a base SQLite file and your JSON data to begin the conversion process.
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    Step 1: Base SQLite File
+                  </CardTitle>
+                  <CardDescription>
+                    Upload an existing SQLite database file that will serve as the base structure
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FileUpload onDatabaseLoad={handleDatabaseLoad} />
+                  {database && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-700">✓ SQLite file loaded successfully</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Step 2: JSON Data
+                  </CardTitle>
+                  <CardDescription>
+                    Upload your JSON file containing the data to be converted
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FileUploadJson onJsonLoad={handleJsonLoad} databaseJson={databaseJson} />
+                  {databaseJson && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-700">✓ JSON file loaded successfully</p>
+                      <div className="text-xs text-green-600 mt-1">
+                        {databaseInfoJson?.accounts} accounts, {databaseInfoJson?.transactions} transactions, {databaseInfoJson?.categories} categories
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: Convert and explore
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
-            <Database className="text-primary" />
-            SQLite File Viewer
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Upload and explore SQLite databases directly in your browser. 
-            Browse tables, view schemas, and execute custom queries with ease.
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Database className="text-primary" />
+              JSON to SQLite Converter
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {isConverted ? "Conversion complete! Explore your converted database below." : "Ready to convert your JSON data to SQLite format."}
+            </p>
+          </div>
+          <Button variant="outline" onClick={handleStartOver}>
+            <Upload className="h-4 w-4 mr-2" />
+            Start Over
+          </Button>
         </div>
 
-        {!database || !databaseJson ? (
-          <div className="max-w-2xl mx-auto">
-            <FileUpload onDatabaseLoad={handleDatabaseLoad} />
-            <FileUploadJson onJsonLoad={handleJsonLoad} databaseJson={databaseJson} />
+        {!isConverted ? (
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader className="text-center">
+              <CardTitle className="flex items-center justify-center gap-2">
+                <ArrowRight className="h-5 w-5" />
+                Convert JSON to SQLite
+              </CardTitle>
+              <CardDescription>
+                Process your JSON data and merge it into the SQLite database
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="font-medium">Base Database</p>
+                    <p className="text-muted-foreground">{databaseInfo?.name}</p>
+                  </div>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="font-medium">JSON Data</p>
+                    <p className="text-muted-foreground">{databaseInfoJson?.name}</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleProcessDatabaseJson} 
+                  disabled={isLoading}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isLoading ? "Converting..." : "Convert JSON to SQLite"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Converted Database</h2>
+              <Button onClick={handleDownloadDatabase}>
+                <Download className="h-4 w-4 mr-2" />
+                Download SQLite File
+              </Button>
+            </div>
+
+            <Tabs defaultValue="tables" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="tables">Tables</TabsTrigger>
+                <TabsTrigger value="query">Query Editor</TabsTrigger>
+                <TabsTrigger value="data">View Data</TabsTrigger>
+                <TabsTrigger value="history">Query History</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="tables" className="space-y-4">
+                <TablesList 
+                  tables={databaseInfo?.tables || []} 
+                  onTableSelect={setSelectedTable}
+                  selectedTable={selectedTable}
+                  database={database}
+                  onTablesRefresh={() => {}}
+                />
+              </TabsContent>
+              
+              <TabsContent value="query" className="space-y-4">
+                <QueryEditor 
+                  database={database} 
+                  onQueryExecute={handleQueryExecute}
+                />
+                {queryResult && (
+                  <QueryResults result={queryResult} />
+                )}
+              </TabsContent>
+              
+              <TabsContent value="data" className="space-y-4">
+                {selectedTable ? (
+                  <TableViewer 
+                    database={database} 
+                    tableName={selectedTable}
+                    tableSchema={databaseInfo?.tables.find(t => t.name === selectedTable)} 
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="text-center py-8">
+                      <Table className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">Select a table from the Tables tab to view its data</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="history" className="space-y-4">
+                <RecentQueries 
+                  queries={recentQueries} 
+                  onQuerySelect={handleQuerySelect}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
-        ) : 
-        // a button to process and generate new file from the databaseJson
-        <div className="max-w-2xl mx-auto flex flex-col gap-4">
-          <Button onClick={handleProcessDatabaseJson}>Process Convertsion from JSON to SQLite</Button>
-          //once the button is clicked, show a button to download the new file
-          <div className="flex flex-col gap-4">
-            <Button onClick={handleDownloadDatabase}>Download New SQLite File</Button>
-          </div>
-        </div>
-        }
+        )}
       </div>
     </div>
   );
