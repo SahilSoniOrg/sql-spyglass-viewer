@@ -178,7 +178,7 @@ const FileUpload = ({ onDatabaseLoad }: FileUploadProps) => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".db,.sqlite,.sqlite3"
+          accept=".db,.sqlite,.sqlite3,.sql"
           onChange={handleFileInputChange}
           className="hidden"
         />

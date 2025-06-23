@@ -340,7 +340,7 @@ async function _processCategories(db: Database, data: any): Promise<{ categoryPk
             stmt = db.prepare("SELECT category_pk FROM categories WHERE name = ?");
             const existingCategory = stmt.getAsObject([cat.name]);
 
-            if (Object.keys(existingCategory).length > 0) {
+            if (Object.keys(existingCategory).length > 0 && existingCategory.category_pk !== null && existingCategory.category_pk !== undefined) {
                 categoryPkMap[cat.id] = existingCategory.category_pk as string;
                 await db.exec("UPDATE categories SET colour = ? WHERE name = ?", [color, cat.name]);
             } else {
