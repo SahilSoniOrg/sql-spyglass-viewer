@@ -1,10 +1,11 @@
 
 import { useState, useRef } from "react";
-import { Upload, Database, AlertCircle } from "lucide-react";
+import { Upload, Database, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import JSZip from "jszip";
 
 interface FileUploadProps {
     onJsonLoad: (database: any, databaseInfo: any) => void;
@@ -32,9 +33,71 @@ const FileUploadJson = ({ onJsonLoad, databaseJson }: FileUploadProps) => {
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const processJsonFile = async (file: File | Blob, fileName: string) => {
+    try {
+      const text = await (file as File).text?.() || await new Response(file).text();
+      const db = JSON.parse(text);
+      
+      // Verify required fields
+      if (!db.accounts || !db.transactions || !db.categories || !db.plannedPaymentRules) {
+        throw new Error("Invalid JSON file. Please ensure it's a valid IvyWallet JSON file.");
+      }
+      
+      const jsonInfo = {
+        name: fileName,
+        accounts: db.accounts.length,
+        transactions: db.transactions.length,
+        categories: db.categories.length,
+        plannedPayments: db.plannedPaymentRules?.length || 0,
+        fullJson: db,
+      };
+
+      onJsonLoad(db, jsonInfo);
+      return true;
+    } catch (err) {
+      console.error("Error parsing JSON:", err);
+      throw new Error("Failed to parse JSON file. Please ensure it's a valid JSON file.");
+    }
+  };
+
+  const processZipFile = async (file: File) => {
+    try {
+      setProgress(20);
+      const zip = await JSZip.loadAsync(file);
+      
+      // Find all JSON files in the zip
+      const jsonFiles = Object.keys(zip.files).filter(name => name.toLowerCase().endsWith('.json'));
+      
+      if (jsonFiles.length === 0) {
+        throw new Error("No JSON file found in the ZIP archive.");
+      }
+      
+      if (jsonFiles.length > 1) {
+        throw new Error("Multiple JSON files found in the ZIP archive. Please include only one JSON file.");
+      }
+      
+      setProgress(50);
+      const jsonFile = zip.file(jsonFiles[0]);
+      if (!jsonFile) {
+        throw new Error("Failed to read the JSON file from the ZIP archive.");
+      }
+      
+      const content = await jsonFile.async('blob');
+      setProgress(80);
+      await processJsonFile(content, jsonFiles[0]);
+      
+    } catch (err) {
+      console.error("Error processing ZIP file:", err);
+      throw err;
+    }
+  };
+
   const processFile = async (file: File) => {
-    if (!file.name.toLowerCase().includes('.json')) {
-      setError("Please select a valid JSON file");
+    const isJson = file.name.toLowerCase().endsWith('.json');
+    const isZip = file.name.toLowerCase().endsWith('.zip');
+    
+    if (!isJson && !isZip) {
+      setError("Please select a valid JSON or ZIP file");
       return;
     }
 
@@ -43,41 +106,18 @@ const FileUploadJson = ({ onJsonLoad, databaseJson }: FileUploadProps) => {
     setProgress(10);
 
     try {
-      setProgress(30);
-
-      const text = await file.text();
-      setProgress(50);
       setFileName(file.name);
-      const db = JSON.parse(text);
-      setProgress(80);
-    //verify that the json have these fields, if not, throw an error
-    // 1. accounts
-    // 2. transactions
-    // 3. categories
-    // 4. plannedPayments
-    if (!db.accounts || !db.transactions || !db.categories || !db.plannedPaymentRules) {
-        console.log(db);
-        console.log(db.plannedPaymentRules);
-        console.log(db.categories);
-        console.log(db.transactions);
-        console.log(db.accounts);
-      throw new Error("Invalid JSON file. Please ensure it's a valid IvyWallet JSON file.");
-    }
       
-      const jsonInfo = {
-        name: file.name,
-        accounts: db.accounts.length,
-        transactions: db.transactions.length,
-        categories: db.categories.length,
-        plannedPayments: db.plannedPaymentRules.length,
-        fullJson: db,
-      };
-
+      if (isJson) {
+        await processJsonFile(file, file.name);
+      } else {
+        await processZipFile(file);
+      }
+      
       setProgress(100);
-      onJsonLoad(db, jsonInfo);
-    } catch (err) {
-      console.error("Error loading database:", err);
-      setError("Failed to load database file. Please ensure it's a valid SQLite database.");
+    } catch (err: any) {
+      console.error("Error loading file:", err);
+      setError(err.message || "Failed to process the file. Please ensure it's a valid file.");
     } finally {
       setIsLoading(false);
       setProgress(0);
@@ -149,8 +189,8 @@ const FileUploadJson = ({ onJsonLoad, databaseJson }: FileUploadProps) => {
           <p className="text-lg font-medium mb-2">
             {isLoading ? "Loading IvyWallet JSON..." : "Drop your IvyWallet JSON file here"}
           </p>
-          <p className="text-sm text-muted-foreground mb-4">
-            Supports .json files
+          <p className="text-sm text-muted-foreground">
+            Upload your Ivy Wallet export ZIP/JSON file, or drag and drop it here
           </p>
           
           {isLoading && (
@@ -177,7 +217,7 @@ const FileUploadJson = ({ onJsonLoad, databaseJson }: FileUploadProps) => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".json"
+          accept=".json,.zip"
           onChange={handleFileInputChange}
           className="hidden"
         />
